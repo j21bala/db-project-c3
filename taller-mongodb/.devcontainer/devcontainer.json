@@ -1,0 +1,29 @@
+{
+  "name": "Monolito → MongoDB Distribuido",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "middleware",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000, 3306, 27017, 27018, 27019, 27020, 8080],
+  "portsAttributes": {
+    "3000":  { "label": "Middleware API",      "onAutoForward": "notify" },
+    "3306":  { "label": "MariaDB Monolito",    "onAutoForward": "silent" },
+    "27017": { "label": "MongoDB Usuarios",    "onAutoForward": "silent" },
+    "27018": { "label": "MongoDB Catalogo",    "onAutoForward": "silent" },
+    "27019": { "label": "MongoDB Pedidos",     "onAutoForward": "silent" },
+    "27020": { "label": "MongoDB Logistica",   "onAutoForward": "silent" },
+    "8080":  { "label": "Dashboard",           "onAutoForward": "openBrowser" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mongodb.mongodb-vscode",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-mysql",
+        "ms-azuretools.vscode-docker",
+        "humao.rest-client"
+      ]
+    }
+  },
+  "postCreateCommand": "cd /workspace && npm install",
+  "remoteUser": "node"
+}

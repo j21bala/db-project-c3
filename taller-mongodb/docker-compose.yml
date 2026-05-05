@@ -1,0 +1,192 @@
+version: "3.9"
+
+networks:
+  migration-net:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  mongo_usuarios_data:
+  mongo_catalogo_data:
+  mongo_pedidos_data:
+  mongo_logistica_data:
+
+services:
+
+  # ══════════════════════════════════════════
+  # MONOLITO — MariaDB
+  # ══════════════════════════════════════════
+  mariadb:
+    image: mariadb:11.2
+    container_name: monolito-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: tienda_monolito
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb/init:/docker-entrypoint-initdb.d
+    networks:
+      - migration-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
+
+  # ══════════════════════════════════════════
+  # DOMINIO 1 — Usuarios  :27017
+  # ══════════════════════════════════════════
+  mongo-usuarios:
+    image: mongo:7.0
+    container_name: mongo-usuarios
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mongopass
+      MONGO_INITDB_DATABASE: usuarios_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_usuarios_data:/data/db
+      - ./mongo-init/usuarios-init.js:/docker-entrypoint-initdb.d/init.js
+    networks:
+      - migration-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ══════════════════════════════════════════
+  # DOMINIO 2 — Catálogo  :27018
+  # ══════════════════════════════════════════
+  mongo-catalogo:
+    image: mongo:7.0
+    container_name: mongo-catalogo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mongopass
+      MONGO_INITDB_DATABASE: catalogo_db
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_catalogo_data:/data/db
+      - ./mongo-init/catalogo-init.js:/docker-entrypoint-initdb.d/init.js
+    networks:
+      - migration-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ══════════════════════════════════════════
+  # DOMINIO 3 — Pedidos  :27019
+  # ══════════════════════════════════════════
+  mongo-pedidos:
+    image: mongo:7.0
+    container_name: mongo-pedidos
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mongopass
+      MONGO_INITDB_DATABASE: pedidos_db
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_pedidos_data:/data/db
+      - ./mongo-init/pedidos-init.js:/docker-entrypoint-initdb.d/init.js
+    networks:
+      - migration-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ══════════════════════════════════════════
+  # DOMINIO 4 — Logística  :27020
+  # ══════════════════════════════════════════
+  mongo-logistica:
+    image: mongo:7.0
+    container_name: mongo-logistica
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mongopass
+      MONGO_INITDB_DATABASE: logistica_db
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo_logistica_data:/data/db
+      - ./mongo-init/logistica-init.js:/docker-entrypoint-initdb.d/init.js
+    networks:
+      - migration-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ══════════════════════════════════════════
+  # MIDDLEWARE — Motor CDC + API
+  # ══════════════════════════════════════════
+  middleware:
+    build:
+      context: .
+      dockerfile: middleware/Dockerfile
+    container_name: migration-middleware
+    restart: unless-stopped
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+    environment:
+      MARIADB_HOST: mariadb
+      MARIADB_PORT: 3306
+      MARIADB_DATABASE: tienda_monolito
+      MARIADB_USER: app_user
+      MARIADB_PASSWORD: app_pass
+      MONGO_USUARIOS_URI: mongodb://admin:mongopass@mongo-usuarios:27017/usuarios_db?authSource=admin
+      MONGO_CATALOGO_URI: mongodb://admin:mongopass@mongo-catalogo:27017/catalogo_db?authSource=admin
+      MONGO_PEDIDOS_URI: mongodb://admin:mongopass@mongo-pedidos:27017/pedidos_db?authSource=admin
+      MONGO_LOGISTICA_URI: mongodb://admin:mongopass@mongo-logistica:27017/logistica_db?authSource=admin
+      PORT: 3000
+      CDC_INTERVAL_MS: 4000
+    ports:
+      - "3000:3000"
+    networks:
+      - migration-net
+    depends_on:
+      mariadb:        { condition: service_healthy }
+      mongo-usuarios: { condition: service_healthy }
+      mongo-catalogo: { condition: service_healthy }
+      mongo-pedidos:  { condition: service_healthy }
+      mongo-logistica: { condition: service_healthy }
+
+  # ══════════════════════════════════════════
+  # DASHBOARD — Nginx
+  # ══════════════════════════════════════════
+  dashboard:
+    image: nginx:alpine
+    container_name: migration-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html
+    networks:
+      - migration-net
+    depends_on:
+      - middleware

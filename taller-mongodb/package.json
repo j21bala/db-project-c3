@@ -1,0 +1,19 @@
+{
+  "name": "taller-mongodb",
+  "version": "1.0.0",
+  "main": "middleware/src/index.js",
+  "scripts": {
+    "start": "node middleware/src/index.js",
+    "migrate:full": "node middleware/src/migrate-full.js",
+    "test:integrity": "node middleware/src/integrity-checker.js"
+  },
+  "dependencies": {
+  "express": "^4.18.2",
+  "mysql2": "^3.6.5",
+  "mongodb": "^6.3.0",
+  "cors": "^2.8.5",
+  "ws": "^8.16.0",
+  "winston": "^3.11.0",
+  "dotenv": "^16.3.1"
+  }
+}

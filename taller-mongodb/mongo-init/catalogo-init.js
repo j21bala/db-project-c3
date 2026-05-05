@@ -1,0 +1,10 @@
+db = db.getSiblingDB("catalogo_db");
+db.createCollection("productos");
+db.createCollection("categorias");
+db.createCollection("marcas");
+db.productos.createIndex({ sku: 1 }, { unique: true, sparse: true });
+db.productos.createIndex({ mariadb_id: 1 }, { unique: true, sparse: true });
+db.productos.createIndex({ "categoria.slug": 1 });
+db.productos.createIndex({ precio: 1 });
+db.productos.createIndex({ destacado: 1, activo: 1 });
+print("✅ catalogo_db listo");
