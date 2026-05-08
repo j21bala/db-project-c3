@@ -89,30 +89,100 @@ app.post("/api/migrate/cdc", async (req, res) => {
   } catch (err) { res.status(500).json({ ok: false, error: err.message }); }
 });
 // Crear un nuevo usuario en el monolito vía API
+// ── Agregar múltiples USUARIOS ──
 app.post("/api/usuarios", async (req, res) => {
   try {
-    const { nombre, apellido, email, telefono } = req.body;
-    
-    // Validación básica
-    if (!nombre || !apellido || !email) {
-      return res.status(400).json({ error: "Faltan datos obligatorios (nombre, apellido, email)" });
-    }
-
+    // Convertimos a Array por si nos envían solo uno o varios
+    const usuarios = Array.isArray(req.body) ? req.body : [req.body];
     const db = await getMariaDB();
-    
-    // Inserción real en la base de datos relacional
-    const [result] = await db.query(
-      "INSERT INTO usuarios (nombre, apellido, email, telefono) VALUES (?, ?, ?, ?)",
-      [nombre, apellido, email, telefono || null]
-    );
+    let insertados = 0;
 
-    res.json({ 
-      ok: true, 
-      mensaje: "Usuario guardado en MariaDB exitosamente",
-      mariadb_id: result.insertId 
-    });
+    for (const u of usuarios) {
+      if (!u.nombre || !u.apellido || !u.email) continue;
+      await db.query(
+        "INSERT INTO usuarios (nombre, apellido, email, telefono) VALUES (?, ?, ?, ?)",
+        [u.nombre, u.apellido, u.email, u.telefono || null]
+      );
+      insertados++;
+    }
+    res.json({ ok: true, mensaje: `${insertados} usuarios guardados exitosamente` });
   } catch (err) { 
     res.status(500).json({ error: err.message }); 
+  }
+});
+// ── Agregar múltiples PRODUCTOS (Catálogo) ──
+app.post("/api/productos", async (req, res) => {
+  try {
+    const productos = Array.isArray(req.body) ? req.body : [req.body];
+    const db = await getMariaDB();
+    let insertados = 0;
+
+    for (const p of productos) {
+      // Ahora validamos que también traiga un 'sku'
+      if (!p.sku || !p.nombre || !p.precio || !p.categoria_id) continue; 
+      
+      await db.query(
+        "INSERT INTO productos (sku, nombre, precio, stock, categoria_id) VALUES (?, ?, ?, ?, ?)",
+        [p.sku, p.nombre, p.precio, p.stock || 0, p.categoria_id]
+      );
+      insertados++;
+    }
+    res.json({ ok: true, mensaje: `${insertados} productos guardados exitosamente` });
+  } catch (err) { 
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+// ── Agregar múltiples PEDIDOS ──
+app.post("/api/pedidos", async (req, res) => {
+  try {
+    const pedidos = Array.isArray(req.body) ? req.body : [req.body];
+    const db = await getMariaDB();
+    let insertados = 0;
+
+    for (const p of pedidos) {
+      if (!p.usuario_id || !p.total) continue;
+      
+      // Si nos envía un estado que es válido, lo usamos. Si no, lo dejamos nulo
+      // para que MariaDB use su valor DEFAULT ('borrador')
+      await db.query(
+        "INSERT INTO pedidos (usuario_id, total, estado) VALUES (?, ?, ?)",
+        [p.usuario_id, p.total, p.estado || null]
+      );
+      insertados++;
+    }
+    res.json({ ok: true, mensaje: `${insertados} pedidos guardados exitosamente` });
+  } catch (err) { 
+    res.status(500).json({ error: err.message }); 
+  }
+});
+// ── MODO BERSERKER: Stress Test (Generar miles de registros) ──
+app.post("/api/stress", async (req, res) => {
+  try {
+    // Si no le mandamos cantidad, por defecto hará 10,000
+    const cantidad = req.query.cantidad || 10000; 
+    const db = await getMariaDB();
+    
+    // Le respondemos a Postman de inmediato para que no se quede cargando
+    res.json({ ok: true, mensaje: `Iniciando bombardeo de ${cantidad} pedidos en segundo plano... Mira tu Dashboard!` });
+
+    // Empezamos a inyectar directamente a MariaDB en segundo plano
+    setTimeout(async () => {
+      let insertados = 0;
+      for(let i = 0; i < cantidad; i++) {
+        // Inventamos totales aleatorios para variar
+        const totalRandom = (Math.random() * 500).toFixed(2);
+        await db.query(
+          "INSERT INTO pedidos (usuario_id, total, estado) VALUES (1, ?, 'borrador')",
+          [totalRandom]
+        );
+        insertados++;
+      }
+      console.log(` Stress test finalizado: Se inyectaron ${insertados} registros de golpe.`);
+    }, 100); // Inicia casi inmediatamente
+
+  } catch (err) { 
+    console.error("Error en stress test:", err);
   }
 });
 

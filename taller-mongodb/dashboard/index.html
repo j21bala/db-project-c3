@@ -19,7 +19,7 @@
 <div class="grid" id="domains"></div>
 
 <div style="margin-bottom:16px">
-  <button class="btn" onclick="migrate()">Migración Full</button>
+  <button class="btn" onclick="migrate()">Migración de datos completa</button>
   <button class="btn" onclick="runCDC()">Forzar Sincronización</button>
   <button class="btn" onclick="checkIntegrity()">Integridad</button>
 </div>
@@ -27,8 +27,8 @@
 <div class="log" id="log"><div class="log-item">Esperando eventos...</div></div>
 
 <script>
-const API = "http://localhost:3000";
-const WS  = "ws://localhost:3000";
+const API = "https://psychic-acorn-r4wxp6g664xpc5jg5-3000.app.github.dev";
+const WS  = "wss://psychic-acorn-r4wxp6g664xpc5jg5-3000.app.github.dev";
 
 function log(msg, cls='') {
   const d = document.getElementById('log');
@@ -79,7 +79,7 @@ async function checkIntegrity() {
   try {
     const r = await fetch(API + '/api/integrity');
     const d = await r.json();
-    document.getElementById('integrity').textContent = d.ok ? ' OK' : ' DIFF';
+    document.getElementById('integrity').textContent = d.ok ? ' OK' : 'DESFASE';
     document.getElementById('integrity').className = 'val ' + (d.ok ? 'ok' : 'err');
     log('Integridad: ' + (d.ok ? 'OK' : 'DIVERGENCIAS'), d.ok ? '' : 'err');
   } catch(e) {
@@ -115,7 +115,7 @@ function connectWS() {
   const ws = new WebSocket(WS);
 
   ws.onopen = () => {
-    document.getElementById('ws-status').textContent = 'WebSocket conectado — eventos en tiempo real';
+    document.getElementById('ws-status').textContent = 'WebSocket conectado, mostrando eventos en tiempo real';
     log('WebSocket conectado', 'cdc');
   };
 
@@ -133,7 +133,7 @@ function connectWS() {
         fetchStatus();
       } else if (msg.type === 'integrity_report') {
         const ok = msg.data.ok;
-        document.getElementById('integrity').textContent = ok ? 'OK' : 'DIFF';
+        document.getElementById('integrity').textContent = ok ? 'OK' : 'DESFASE';
         document.getElementById('integrity').className = 'val ' + (ok ? 'ok' : 'err');
       } else {
         log(msg.type + ': ' + JSON.stringify(msg.data));
