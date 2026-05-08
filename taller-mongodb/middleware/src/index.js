@@ -88,6 +88,33 @@ app.post("/api/migrate/cdc", async (req, res) => {
     res.json({ ok: true, result });
   } catch (err) { res.status(500).json({ ok: false, error: err.message }); }
 });
+// Crear un nuevo usuario en el monolito vía API
+app.post("/api/usuarios", async (req, res) => {
+  try {
+    const { nombre, apellido, email, telefono } = req.body;
+    
+    // Validación básica
+    if (!nombre || !apellido || !email) {
+      return res.status(400).json({ error: "Faltan datos obligatorios (nombre, apellido, email)" });
+    }
+
+    const db = await getMariaDB();
+    
+    // Inserción real en la base de datos relacional
+    const [result] = await db.query(
+      "INSERT INTO usuarios (nombre, apellido, email, telefono) VALUES (?, ?, ?, ?)",
+      [nombre, apellido, email, telefono || null]
+    );
+
+    res.json({ 
+      ok: true, 
+      mensaje: "Usuario guardado en MariaDB exitosamente",
+      mariadb_id: result.insertId 
+    });
+  } catch (err) { 
+    res.status(500).json({ error: err.message }); 
+  }
+});
 
 app.get("/api/integrity", async (req, res) => {
   try {
@@ -97,47 +124,14 @@ app.get("/api/integrity", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Simular cambios en el monolito para demostrar CDC
-app.post("/api/demo/change", async (req, res) => {
-  try {
-    const db = await getMariaDB();
-    const ts = Date.now();
-    const results = {};
-
-    // Nuevo usuario → trigger CDC usuarios
-    await db.query(
-      "INSERT INTO usuarios (nombre, apellido, email) VALUES (?,?,?)",
-      [`Demo${ts}`, "CDC", `demo${ts}@test.com`]
-    );
-    results.usuario = `demo${ts}@test.com creado`;
-
-    // Actualizar stock → trigger CDC productos
-    await db.query("UPDATE productos SET stock = stock - 1 WHERE id = 1 AND stock > 0");
-    results.stock = "Stock Galaxy S24 -1";
-
-    // Nuevo evento de tracking → trigger CDC logistica
-    const [envios] = await db.query("SELECT id FROM envios WHERE estado != 'entregado' LIMIT 1");
-    if (envios.length > 0) {
-      await db.query(
-        "INSERT INTO tracking_eventos (envio_id, estado, descripcion, ciudad) VALUES (?,?,?,?)",
-        [envios[0].id, "en_transito", `Actualización demo ${ts}`, "Bogotá"]
-      );
-      results.tracking = `Evento tracking envío #${envios[0].id}`;
-    }
-
-    broadcast("demo_change", results);
-    res.json({ ok: true, cambios: results });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 // ── CDC LOOP ─────────────────────────────────────
 const CDC_INTERVAL = parseInt(process.env.CDC_INTERVAL_MS) || 4000;
 
 setInterval(async () => {
   try {
     const r = await processCDCEvents(broadcast);
-    if (r.processed > 0) logger.info(`✅ CDC: ${r.processed} eventos`);
-  } catch (err) { logger.error(`❌ CDC: ${err.message}`); }
+    if (r.processed > 0) logger.info(`CDC: ${r.processed} eventos`);
+  } catch (err) { logger.error(`CDC: ${err.message}`); }
 }, CDC_INTERVAL);
 
 // ── INICIO ───────────────────────────────────────
@@ -149,11 +143,11 @@ async function main() {
     try {
       await getMariaDB();
       await getMongoDomains();
-      logger.info("✅ Todas las conexiones establecidas");
+      logger.info("Todas las conexiones establecidas");
       break;
     } catch (err) {
       retries++;
-      logger.warn(`⏳ Esperando DBs (${retries}/20): ${err.message}`);
+      logger.warn(`Esperando DBs (${retries}/20): ${err.message}`);
       await new Promise(r => setTimeout(r, 3000));
     }
   }
