@@ -3,40 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <title>Migration Dashboard</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: sans-serif; background: #0f1117; color: #e2e8f0; padding: 20px; }
-  h1 { font-size: 20px; margin-bottom: 20px; color: #a78bfa; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .card { background: #1e2130; border-radius: 10px; padding: 16px; border: 1px solid #2d3148; }
-  .card h3 { font-size: 12px; color: #7c8db5; text-transform: uppercase; margin-bottom: 8px; }
-  .card .val { font-size: 28px; font-weight: bold; }
-  .ok { color: #34d399; } .warn { color: #fbbf24; } .err { color: #f87171; }
-  .domain { background: #1e2130; border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid #2d3148; }
-  .domain h3 { font-size: 14px; margin-bottom: 10px; color: #a78bfa; }
-  .row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #2a2f45; }
-  .row:last-child { border: none; }
-  .log { background: #111827; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; height: 200px; overflow-y: auto; border: 1px solid #2d3148; }
-  .log-item { padding: 3px 0; color: #9ca3af; }
-  .log-item.cdc { color: #34d399; }
-  .log-item.mig { color: #60a5fa; }
-  .log-item.err { color: #f87171; }
-  .btn { background: #4f46e5; color: white; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-right: 8px; margin-bottom: 8px; }
-  .btn:hover { background: #6366f1; }
-  .btn.red { background: #dc2626; }
-  .btn.red:hover { background: #ef4444; }
-  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .dot-ok { background: #34d399; } .dot-err { background: #f87171; }
-  #ws-status { font-size: 12px; color: #7c8db5; margin-bottom: 16px; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>🍃 MongoDB Migration Dashboard</h1>
-<div id="ws-status">⏳ Conectando WebSocket...</div>
+<h1>MongoDB Migration Dashboard</h1>
+<div id="ws-status">Conectando WebSocket...</div>
 
 <div class="grid">
-  <div class="card"><h3>CDC Procesados</h3><div class="val ok" id="cdc-proc">-</div></div>
-  <div class="card"><h3>CDC Pendientes</h3><div class="val warn" id="cdc-pend">-</div></div>
+  <div class="card"><h3>Eventos Sincronizados</h3><div class="val ok" id="cdc-proc">-</div></div>
+  <div class="card"><h3>Sincronizaciones Pendientes</h3><div class="val warn" id="cdc-pend">-</div></div>
   <div class="card"><h3>Integridad</h3><div class="val ok" id="integrity">-</div></div>
   <div class="card"><h3>Uptime (s)</h3><div class="val" id="uptime">-</div></div>
 </div>
@@ -44,17 +19,16 @@
 <div class="grid" id="domains"></div>
 
 <div style="margin-bottom:16px">
-  <button class="btn" onclick="migrate()">▶ Migración Full</button>
-  <button class="btn" onclick="runCDC()">⚡ Forzar CDC</button>
-  <button class="btn" onclick="checkIntegrity()">🔍 Integridad</button>
-  <button class="btn red" onclick="demoChange()">🔥 Demo Change</button>
+  <button class="btn" onclick="migrate()">Migración Full</button>
+  <button class="btn" onclick="runCDC()">Forzar Sincronización</button>
+  <button class="btn" onclick="checkIntegrity()">Integridad</button>
 </div>
 
 <div class="log" id="log"><div class="log-item">Esperando eventos...</div></div>
 
 <script>
-const API = "https://potential-doodle-q79r7xj559pvc4wjw-3000.app.github.dev";
-const WS  = "wss://potential-doodle-q79r7xj559pvc4wjw-3000.app.github.dev";
+const API = "http://localhost:3000";
+const WS  = "ws://localhost:3000";
 
 function log(msg, cls='') {
   const d = document.getElementById('log');
@@ -105,7 +79,7 @@ async function checkIntegrity() {
   try {
     const r = await fetch(API + '/api/integrity');
     const d = await r.json();
-    document.getElementById('integrity').textContent = d.ok ? '✅ OK' : '⚠️ DIFF';
+    document.getElementById('integrity').textContent = d.ok ? ' OK' : ' DIFF';
     document.getElementById('integrity').className = 'val ' + (d.ok ? 'ok' : 'err');
     log('Integridad: ' + (d.ok ? 'OK' : 'DIVERGENCIAS'), d.ok ? '' : 'err');
   } catch(e) {
@@ -136,22 +110,12 @@ async function runCDC() {
   }
 }
 
-async function demoChange() {
-  try {
-    const r = await fetch(API + '/api/demo/change', {method:'POST'});
-    const d = await r.json();
-    log('Demo change: ' + JSON.stringify(d.cambios), 'cdc');
-  } catch(e) {
-    log('Error demo: ' + e.message, 'err');
-  }
-}
-
 // ── WebSocket con reconexión automática ───────────────────────
 function connectWS() {
   const ws = new WebSocket(WS);
 
   ws.onopen = () => {
-    document.getElementById('ws-status').textContent = '🟢 WebSocket conectado — eventos en tiempo real';
+    document.getElementById('ws-status').textContent = 'WebSocket conectado — eventos en tiempo real';
     log('WebSocket conectado', 'cdc');
   };
 
@@ -160,7 +124,7 @@ function connectWS() {
       const msg = JSON.parse(e.data);
       if (msg.type === 'cdc_event') {
         log(`CDC [${msg.data.dominio}] ${msg.data.operacion} ${msg.data.entidad} #${msg.data.entidad_id}`, 'cdc');
-        fetchStatus();
+        //fetchStatus();
       } else if (msg.type === 'migration_completed') {
         log('Migración completada: ' + JSON.stringify(msg.data), 'mig');
         fetchStatus();
@@ -169,7 +133,7 @@ function connectWS() {
         fetchStatus();
       } else if (msg.type === 'integrity_report') {
         const ok = msg.data.ok;
-        document.getElementById('integrity').textContent = ok ? '✅ OK' : '⚠️ DIFF';
+        document.getElementById('integrity').textContent = ok ? 'OK' : 'DIFF';
         document.getElementById('integrity').className = 'val ' + (ok ? 'ok' : 'err');
       } else {
         log(msg.type + ': ' + JSON.stringify(msg.data));
@@ -180,11 +144,11 @@ function connectWS() {
   };
 
   ws.onerror = () => {
-    document.getElementById('ws-status').textContent = '🟡 WebSocket con errores — reintentando...';
+    document.getElementById('ws-status').textContent = 'WebSocket con errores — reintentando...';
   };
 
   ws.onclose = () => {
-    document.getElementById('ws-status').textContent = '🔴 WebSocket desconectado — reintentando...';
+    document.getElementById('ws-status').textContent = 'WebSocket desconectado — reintentando...';
     setTimeout(connectWS, 3000);
   };
 }

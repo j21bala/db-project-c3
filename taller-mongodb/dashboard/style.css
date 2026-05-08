@@ -1,0 +1,251 @@
+/* Importar una fuente moderna y limpia */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+  /* La paleta de colores */
+  --light-beige: #DAD7CD;
+  --light-green: #A3B18A;
+  --med-green: #588157;
+  --dark-green: #3A5A40;
+  --darkest-green: #344E41;
+  
+  /* Mapeo de interfaz */
+  --bg-body: var(--light-beige);
+  --bg-card: #FFFFFF;
+  --text-main: var(--darkest-green);
+  --border-radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* =========================================
+   1. REESTRUCTURACIÓN DE DISEÑO MASTER
+   ========================================= */
+body { 
+  font-family: 'Inter', system-ui, sans-serif; 
+  background: var(--bg-body); 
+  color: var(--text-main); 
+  padding: 30px 40px; 
+  max-width: 1400px;
+  margin: 0 auto;
+  
+  /* El Body controla la estructura principal */
+  display: grid;
+  grid-template-columns: 1fr 1.5fr; 
+  grid-template-rows: auto auto 1fr auto; 
+  column-gap: 40px;
+  row-gap: 16px;
+}
+
+/* --- Título Principal --- */
+h1 { 
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 26px; 
+  color: var(--darkest-green); 
+  font-weight: 700;
+  align-self: center;
+}
+
+/* --- Estado del WebSocket --- */
+#ws-status { 
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  font-size: 13px; 
+  color: var(--dark-green); 
+  font-weight: 600;
+  background: var(--light-green);
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(52, 78, 65, 0.1);
+}
+
+/* --- Contenedor de Botones --- */
+body > div:nth-of-type(4) {
+  grid-column: 2;
+  grid-row: 1 / span 2; 
+  align-self: center;
+  justify-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 0 !important; 
+}
+
+/* --- COLUMNA IZQUIERDA: Métricas --- */
+body > .grid:first-of-type {
+  grid-column: 1;
+  grid-row: 3;
+  position: relative;
+  margin-top: 20px;
+  padding-top: 40px; /* Crea espacio interno protegido para el título */
+
+  display: grid;
+  grid-template-rows: repeat(4, 1fr); /* 4 filas idénticas */
+  gap: 16px;
+}
+
+body > .grid:first-of-type::before {
+  content: "Estado de Sincronización";
+  position: absolute;
+  top: 0; /* Se ancla al inicio del padding protegido */
+  left: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark-green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+body > .grid:first-of-type::after {
+  content: "Registro de Actividad en Vivo";
+  position: absolute;
+  bottom: -40px; /* Se ancla debajo de las métricas para preparar la consola */
+  left: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark-green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- COLUMNA DERECHA: Dominios --- */
+#domains {
+  grid-column: 2;
+  grid-row: 3;
+  position: relative;
+  margin-top: 20px;
+  padding-top: 40px; /* Mismo espacio interno que la izquierda = Alineación perfecta */
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(4, 1fr); /* Las mismas 4 filas que la izquierda */
+  gap: 16px;
+}
+
+#domains::before {
+  content: "Dominios de Microservicios hechos en MongoDB";
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark-green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- CONSOLA DE LOGS --- */
+#log {
+  grid-column: 1 / -1; 
+  grid-row: 4;
+  margin-top: 50px; /* Deja respirar al título inyectado por la columna izquierda */
+  
+  background: var(--darkest-green); 
+  border-radius: var(--border-radius); 
+  padding: 20px; 
+  font-family: monospace; 
+  font-size: 13px; 
+  height: 280px; 
+  overflow-y: auto; 
+  border: 4px solid var(--dark-green); 
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+}
+
+/* =========================================
+   2. ESTILOS VISUALES (COMPONENTES)
+   ========================================= */
+.card, .domain { 
+  background: var(--bg-card); 
+  border-radius: var(--border-radius); 
+  padding: 24px; 
+  border: 2px solid var(--light-green);
+  box-shadow: 0 4px 6px rgba(52, 78, 65, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  /* Flexbox para manejar el estiramiento interno elegante */
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  justify-content: center; /* Centra el número en la caja de métricas */
+}
+
+.domain { 
+  justify-content: flex-start;
+  grid-row: span 2; /* MAGIA: Esta caja ocupa el alto exacto de 2 métricas + 1 espacio vacío */
+}
+
+.card:hover, .domain:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 15px rgba(52, 78, 65, 0.1);
+}
+
+.card h3 { 
+  font-size: 13px; 
+  color: var(--med-green); 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom: 12px; 
+}
+
+.card .val { 
+  font-size: 34px; 
+  font-weight: 700; 
+  color: var(--darkest-green);
+}
+
+.domain h3 { 
+  font-size: 16px; 
+  margin-bottom: 16px; 
+  color: var(--darkest-green); 
+  border-bottom: 2px solid var(--light-beige);
+  padding-bottom: 10px;
+}
+
+.row { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 14px; 
+  padding: 10px 0; 
+  border-bottom: 1px solid var(--light-beige); 
+  color: var(--dark-green);
+}
+
+.row:last-child { border: none; padding-bottom: 0; }
+
+.btn { 
+  background: var(--med-green); 
+  color: var(--bg-card); 
+  border: none; 
+  padding: 12px 20px; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  font-size: 14px; 
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(52, 78, 65, 0.2);
+  margin: 0 !important; 
+}
+
+.btn:hover { 
+  background: var(--dark-green); 
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52, 78, 65, 0.3);
+}
+
+.ok { color: var(--med-green); font-weight: 600; } 
+.warn { color: #d97706; font-weight: 600; } 
+.err { color: #dc2626; font-weight: 600; }  
+
+.log-item { padding: 5px 0; color: var(--light-green); }
+.log-item.cdc { color: var(--light-beige); }
+.log-item.mig { color: #81a88b; font-weight: bold; }
+.log-item.err { color: #ff8c8c; }
+
+.log::-webkit-scrollbar { width: 8px; }
+.log::-webkit-scrollbar-track { background: var(--dark-green); border-radius: 4px; }
+.log::-webkit-scrollbar-thumb { background: var(--light-green); border-radius: 4px; }
