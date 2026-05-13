@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 :root {
-  /* La paleta de colores */
+  /* La paleta de colores original */
   --light-beige: #DAD7CD;
   --light-green: #A3B18A;
   --med-green: #588157;
@@ -29,29 +29,23 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   
-  /* El Body controla la estructura principal */
-  display: grid;
-  grid-template-columns: 1fr 1.5fr; 
-  grid-template-rows: auto auto 1fr auto; 
-  column-gap: 40px;
-  row-gap: 16px;
+  /* CORRECCIÓN 1: Cambiamos de Grid a Flex en columna.
+     Así los paneles fluyen naturalmente hacia abajo sin chocar. */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 /* --- Título Principal --- */
 h1 { 
-  grid-column: 1;
-  grid-row: 1;
   font-size: 26px; 
   color: var(--darkest-green); 
   font-weight: 700;
-  align-self: center;
 }
 
 /* --- Estado del WebSocket --- */
 #ws-status { 
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: start;
+  align-self: flex-start;
   font-size: 13px; 
   color: var(--dark-green); 
   font-weight: 600;
@@ -61,48 +55,38 @@ h1 {
   box-shadow: 0 2px 4px rgba(52, 78, 65, 0.1);
 }
 
-/* --- Contenedor de Botones --- */
-body > div:nth-of-type(4) {
-  grid-column: 2;
-  grid-row: 1 / span 2; 
-  align-self: center;
-  justify-self: end;
+/* --- Contenedor de Botones y Archivos CSV --- */
+/* Quitamos el nth-of-type que rompía todo y usamos una clase */
+.toolbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 0 !important; 
+  margin-bottom: 10px;
+}
+
+/* --- CONTENEDOR DIVIDIDO (Métricas vs Dominios) --- */
+/* CORRECCIÓN 2: Aislamos tus paneles en su propia cuadrícula */
+.dashboard-split {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr; 
+  column-gap: 40px;
+  align-items: start;
 }
 
 /* --- COLUMNA IZQUIERDA: Métricas --- */
-body > .grid:first-of-type {
-  grid-column: 1;
-  grid-row: 3;
+.metrics-grid {
   position: relative;
-  margin-top: 20px;
-  padding-top: 40px; /* Crea espacio interno protegido para el título */
-
+  padding-top: 40px; /* Espacio para el título inyectado */
   display: grid;
   grid-template-rows: repeat(4, 1fr); /* 4 filas idénticas */
   gap: 16px;
 }
 
-body > .grid:first-of-type::before {
+.metrics-grid::before {
   content: "Estado de Sincronización";
   position: absolute;
-  top: 0; /* Se ancla al inicio del padding protegido */
-  left: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--dark-green);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-body > .grid:first-of-type::after {
-  content: "Registro de Actividad en Vivo";
-  position: absolute;
-  bottom: -40px; /* Se ancla debajo de las métricas para preparar la consola */
+  top: 0;
   left: 0;
   font-size: 16px;
   font-weight: 700;
@@ -113,12 +97,8 @@ body > .grid:first-of-type::after {
 
 /* --- COLUMNA DERECHA: Dominios --- */
 #domains {
-  grid-column: 2;
-  grid-row: 3;
   position: relative;
-  margin-top: 20px;
-  padding-top: 40px; /* Mismo espacio interno que la izquierda = Alineación perfecta */
-
+  padding-top: 40px; /* Alineación perfecta con la izquierda */
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(4, 1fr); /* Las mismas 4 filas que la izquierda */
@@ -138,11 +118,24 @@ body > .grid:first-of-type::after {
 }
 
 /* --- CONSOLA DE LOGS --- */
+.log-wrapper {
+  position: relative;
+  margin-top: 40px; /* Da espacio para el título inferior que te gustaba */
+}
+
+.log-wrapper::before {
+  content: "Registro de Actividad en Vivo";
+  position: absolute;
+  top: -25px;
+  left: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark-green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 #log {
-  grid-column: 1 / -1; 
-  grid-row: 4;
-  margin-top: 50px; /* Deja respirar al título inyectado por la columna izquierda */
-  
   background: var(--darkest-green); 
   border-radius: var(--border-radius); 
   padding: 20px; 
@@ -164,19 +157,17 @@ body > .grid:first-of-type::after {
   border: 2px solid var(--light-green);
   box-shadow: 0 4px 6px rgba(52, 78, 65, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  
-  /* Flexbox para manejar el estiramiento interno elegante */
   display: flex;
   flex-direction: column;
 }
 
 .card {
-  justify-content: center; /* Centra el número en la caja de métricas */
+  justify-content: center;
 }
 
 .domain { 
   justify-content: flex-start;
-  grid-row: span 2; /* MAGIA: Esta caja ocupa el alto exacto de 2 métricas + 1 espacio vacío */
+  grid-row: span 2; 
 }
 
 .card:hover, .domain:hover {
@@ -228,7 +219,6 @@ body > .grid:first-of-type::after {
   font-weight: 600;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(52, 78, 65, 0.2);
-  margin: 0 !important; 
 }
 
 .btn:hover { 

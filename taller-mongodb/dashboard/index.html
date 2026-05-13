@@ -9,26 +9,63 @@
 <h1>MongoDB Migration Dashboard</h1>
 <div id="ws-status">Conectando WebSocket...</div>
 
-<div class="grid">
-  <div class="card"><h3>Eventos Sincronizados</h3><div class="val ok" id="cdc-proc">-</div></div>
-  <div class="card"><h3>Sincronizaciones Pendientes</h3><div class="val warn" id="cdc-pend">-</div></div>
-  <div class="card"><h3>Integridad</h3><div class="val ok" id="integrity">-</div></div>
-  <div class="card"><h3>Uptime (s)</h3><div class="val" id="uptime">-</div></div>
+<div id="error-panel" style="display: none; background: #fef2f2; border: 2px solid #ef4444; padding: 16px; border-radius: 8px; color: #991b1b;">
+  <h3 style="margin-bottom: 8px; font-size: 16px; margin-top: 0;"> Fallo en la Inserción Masiva</h3>
+  <p id="error-razon" style="font-weight: 600; font-size: 14px; margin-bottom: 8px;"></p>
+  <div style="background: #ffffff; border: 1px solid #fca5a5; padding: 10px; border-radius: 4px;">
+    <strong style="font-size: 12px; color: #b91c1c;">Log de MariaDB:</strong><br>
+    <code id="error-sql" style="font-size: 12px; font-family: monospace; color: #450a0a;"></code>
+  </div>
 </div>
 
-<div class="grid" id="domains"></div>
+<div style="background: #f8fafc; border-left: 4px solid #81a88b; padding: 16px; border-radius: 4px;">
+  <h4 style="margin-top: 0; margin-bottom: 8px; color: #81a88b;">Orden Estricto de Subida</h4>
+  <p style="font-size: 13px; color: #4b5563; margin-bottom: 5px; margin-top: 0;">MariaDB rechazará datos huérfanos. Sube los archivos en este orden:</p>
+  <div style="font-size: 12px; color: #81a88b;">
+    <strong>1.</strong> Usuarios, Categorías, Marcas, Bodegas | <strong>2.</strong> Productos, Direcciones | <strong>3.</strong> Pedidos, Variantes | <strong>4.</strong> Pagos, Envíos
+  </div>
+</div>
 
-<div style="margin-bottom:16px">
-  <button class="btn" onclick="migrate()">Migración de datos completa</button>
+<div class="toolbar">
+  <button class="btn" onclick="migrate()">Migración completa</button>
   <button class="btn" onclick="runCDC()">Forzar Sincronización</button>
   <button class="btn" onclick="checkIntegrity()">Integridad</button>
+  
+  <div style="border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px; display: flex; gap: 8px; align-items: center;">
+    <select id="csv-table" class="btn" style="background: #f1f5f9; color: #0f172a; padding: 10px; border: 1px solid #cbd5e1;">
+      <option value="usuarios">Usuarios</option>
+      <option value="categorias">Categorías</option>
+      <option value="marcas">Marcas</option>
+      <option value="productos">Productos</option>
+      <option value="pedidos">Pedidos</option>
+      <option value="pagos">Pagos</option>
+      <option value="envios">Envíos</option>
+    </select>
+    <input type="file" id="csv-file" accept=".csv" style="font-size: 13px; max-width: 200px;" />
+    <button class="btn" onclick="uploadCSV()" style="background: #81a88b; color: white;">Subir CSV</button>
+  </div>
 </div>
 
-<div class="log" id="log"><div class="log-item">Esperando eventos...</div></div>
+<div class="dashboard-split">
+  
+  <div class="metrics-grid">
+    <div class="card"><h3>Eventos Sincronizados</h3><div class="val ok" id="cdc-proc">-</div></div>
+    <div class="card"><h3>Sincronizaciones Pendientes</h3><div class="val warn" id="cdc-pend">-</div></div>
+    <div class="card"><h3>Integridad</h3><div class="val ok" id="integrity">-</div></div>
+    <div class="card"><h3>Uptime (s)</h3><div class="val" id="uptime">-</div></div>
+  </div>
+
+  <div id="domains"></div>
+  
+</div>
+
+<div class="log-wrapper">
+  <div class="log" id="log"><div class="log-item">Esperando eventos...</div></div>
+</div>
 
 <script>
-const API = "https://psychic-acorn-r4wxp6g664xpc5jg5-3000.app.github.dev";
-const WS  = "wss://psychic-acorn-r4wxp6g664xpc5jg5-3000.app.github.dev";
+const API = "https://automatic-space-yodel-5g59xrqrrqr927g5j-3000.app.github.dev";
+const WS  = "wss://automatic-space-yodel-5g59xrqrrqr927g5j-3000.app.github.dev";
 
 function log(msg, cls='') {
   const d = document.getElementById('log');
@@ -107,6 +144,47 @@ async function runCDC() {
     fetchStatus();
   } catch(e) {
     log('Error CDC: ' + e.message, 'err');
+  }
+}
+async function uploadCSV() {
+  const fileInput = document.getElementById('csv-file');
+  const tableSelect = document.getElementById('csv-table').value;
+  const errorPanel = document.getElementById('error-panel');
+  
+  errorPanel.style.display = 'none'; // Ocultar errores previos
+
+  if (!fileInput.files.length) {
+    alert("Por favor selecciona un archivo CSV.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  log(`Enviando CSV a la tabla '${tableSelect}'...`, 'mig');
+
+  try {
+    const text = await file.text();
+    const r = await fetch(`${API}/api/upload-csv/${tableSelect}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: text
+    });
+    
+    const d = await r.json();
+    
+    if (d.ok) {
+      log(' ' + d.mensaje, 'ok');
+      fileInput.value = ''; // Limpiar el input
+      fetchStatus();
+    } else {
+      // Mostrar el panel rojo con el error de la base de datos
+      log(' Error al subir CSV', 'err');
+      document.getElementById('error-razon').textContent = d.error;
+      document.getElementById('error-sql').textContent = `[${d.sqlState || 'SQL_ERR'}] ${d.sqlMessage || 'Desconocido'}`;
+      errorPanel.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Subir la vista para ver el error
+    }
+  } catch(e) {
+    log('Error de red: ' + e.message, 'err');
   }
 }
 

@@ -16,7 +16,7 @@ const wss    = new WebSocket.Server({ server });
 
 app.use(cors({ origin: '*', methods: ['GET','POST'] }));
 app.use(express.json());
-
+app.use(express.text({ limit: '50mb' })); // Permite recibir CSVs grandes
 // Broadcast a todos los clientes WebSocket
 const broadcast = (type, data) => {
   const msg = JSON.stringify({ type, data, ts: new Date().toISOString() });
@@ -89,7 +89,52 @@ app.post("/api/migrate/cdc", async (req, res) => {
   } catch (err) { res.status(500).json({ ok: false, error: err.message }); }
 });
 // Crear un nuevo usuario en el monolito vía API
-// ── Agregar múltiples USUARIOS ──
+// ── SUBIDA MASIVA VÍA CSV (UNIVERSAL) ──
+app.post("/api/upload-csv/:tabla", async (req, res) => {
+  const tabla = req.params.tabla;
+  const permitidas = [
+    "usuarios", "direcciones", "preferencias_usuario", "categorias", "marcas", 
+    "productos", "variantes_producto", "atributos_producto", "imagenes_producto", 
+    "resenas", "cupones", "pedidos", "items_pedido", "pagos", "devoluciones", 
+    "bodegas", "stock_bodega", "transportistas", "envios", "tracking_eventos"
+  ];
+
+  if (!permitidas.includes(tabla)) return res.status(400).json({ error: "Tabla no permitida" });
+
+  try {
+    const csvTexto = req.body;
+    const lineas = csvTexto.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (lineas.length < 2) return res.status(400).json({ error: "CSV vacío o sin encabezados" });
+
+    const columnas = lineas[0].split(',').map(c => c.trim().replace(/[^a-zA-Z0-9_]/g, ''));
+    const valores = [];
+
+    for (let i = 1; i < lineas.length; i++) {
+      const datosFila = lineas[i].split(',').map(c => {
+        let val = c.trim();
+        return val === '' || val.toLowerCase() === 'null' ? null : val;
+      });
+      if (datosFila.length === columnas.length) valores.push(datosFila);
+    }
+
+    if (valores.length === 0) return res.status(400).json({ error: "No hay filas válidas" });
+
+    const db = await getMariaDB();
+    const query = `INSERT INTO ${tabla} (${columnas.join(', ')}) VALUES ?`;
+    await db.query(query, [valores]);
+
+    res.json({ ok: true, mensaje: `Se insertaron ${valores.length} registros en '${tabla}'.` });
+
+  } catch (err) {
+    let razon = "Error general en la inserción.";
+    if (err.code === 'ER_NO_REFERENCED_ROW_2') razon = "Violación de Llave Foránea: El dato depende de otro que NO EXISTE. Sigue el orden.";
+    else if (err.code === 'ER_DUP_ENTRY') razon = "Dato Duplicado: Un registro con esta llave primaria ya existe.";
+    else if (err.code === 'ER_BAD_FIELD_ERROR') razon = "Columna Desconocida: Una columna del CSV no existe en la tabla.";
+    else if (err.code === 'WARN_DATA_TRUNCATED' || err.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') razon = "Tipo de Dato Inválido (Ej: texto en campo numérico).";
+
+    res.status(500).json({ ok: false, error: razon, sqlState: err.sqlState || err.code, sqlMessage: err.message });
+  }
+});
 app.post("/api/usuarios", async (req, res) => {
   try {
     // Convertimos a Array por si nos envían solo uno o varios
