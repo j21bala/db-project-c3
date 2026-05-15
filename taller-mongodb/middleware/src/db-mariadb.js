@@ -14,7 +14,7 @@ async function getMariaDB() {
     connectionLimit: 10,
   });
   const conn = await pool.getConnection();
-  logger.info(`✅ MariaDB conectado`);
+  logger.info(`MariaDB conectado`);
   conn.release();
   return pool;
 }

@@ -18,7 +18,7 @@ async function getMongoDomains() {
       });
       await client.connect();
       clients[domain] = client;
-      logger.info(`✅ MongoDB [${domain}] conectado`);
+      logger.info(`MongoDB [${domain}] conectado`);
     }
   }
   return clients;

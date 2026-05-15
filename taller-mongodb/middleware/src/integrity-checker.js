@@ -33,7 +33,7 @@ async function checkIntegrity() {
 
   const [pend] = await db.query("SELECT COUNT(*) as c FROM outbox_events WHERE procesado=0");
   report.pendientes_cdc = pend[0].c;
-  logger.info(`🔍 Integridad: ${report.ok ? "✅ OK" : "⚠️  DIVERGENCIAS"} | CDC pendientes: ${report.pendientes_cdc}`);
+  logger.info(`🔍 Integridad: ${report.ok ? "OK" : " DIVERGENCIAS"} | CDC pendientes: ${report.pendientes_cdc}`);
   return report;
 }
 

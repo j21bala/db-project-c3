@@ -7,7 +7,7 @@ async function runFullMigration(broadcast) {
   const stats = { usuarios:0, catalogo:0, pedidos:0, logistica:0, errors:[] };
 
   // ══ FASE 1: USUARIOS ════════════════════════════════
-  logger.info("📦 Fase 1: Usuarios...");
+  logger.info("Fase 1: Usuarios...");
   try {
     const uDb = await getMongoDb("usuarios");
     const col  = uDb.collection("usuarios");
@@ -71,14 +71,14 @@ async function runFullMigration(broadcast) {
     }
 
     if (broadcast) broadcast("phase_complete", { fase: "usuarios", count: stats.usuarios });
-    logger.info(`  ✅ ${stats.usuarios} usuarios + ${sesiones.length} sesiones`);
+    logger.info(`  ${stats.usuarios} usuarios + ${sesiones.length} sesiones`);
   } catch (err) {
-    logger.error(`  ❌ Usuarios: ${err.message}`);
+    logger.error(`  Usuarios: ${err.message}`);
     stats.errors.push({ fase: "usuarios", error: err.message });
   }
 
   // ══ FASE 2: CATÁLOGO ════════════════════════════════
-  logger.info("📦 Fase 2: Catálogo...");
+  logger.info("Fase 2: Catálogo...");
   try {
     const cDb   = await getMongoDb("catalogo");
     const pCol  = cDb.collection("productos");
@@ -176,14 +176,14 @@ async function runFullMigration(broadcast) {
     }
 
     if (broadcast) broadcast("phase_complete", { fase: "catalogo", count: stats.catalogo });
-    logger.info(`  ✅ ${stats.catalogo} productos`);
+    logger.info(` ${stats.catalogo} productos`);
   } catch (err) {
-    logger.error(`  ❌ Catálogo: ${err.message}`);
+    logger.error(` Catálogo: ${err.message}`);
     stats.errors.push({ fase: "catalogo", error: err.message });
   }
 
   // ══ FASE 3: PEDIDOS ════════════════════════════════
-  logger.info("📦 Fase 3: Pedidos...");
+  logger.info("Fase 3: Pedidos...");
   try {
     const pedDb = await getMongoDb("pedidos");
     const pedCol = pedDb.collection("pedidos");
@@ -252,14 +252,14 @@ async function runFullMigration(broadcast) {
     }
 
     if (broadcast) broadcast("phase_complete", { fase: "pedidos", count: stats.pedidos });
-    logger.info(`  ✅ ${stats.pedidos} pedidos`);
+    logger.info(` ${stats.pedidos} pedidos`);
   } catch (err) {
-    logger.error(`  ❌ Pedidos: ${err.message}`);
+    logger.error(` Pedidos: ${err.message}`);
     stats.errors.push({ fase: "pedidos", error: err.message });
   }
 
   // ══ FASE 4: LOGÍSTICA ═══════════════════════════════
-  logger.info("📦 Fase 4: Logística...");
+  logger.info("Fase 4: Logística...");
   try {
     const logDb  = await getMongoDb("logistica");
     const envCol = logDb.collection("envios");
@@ -330,13 +330,13 @@ async function runFullMigration(broadcast) {
     }
 
     if (broadcast) broadcast("phase_complete", { fase: "logistica", count: stats.logistica });
-    logger.info(`  ✅ ${stats.logistica} envíos`);
+    logger.info(` ${stats.logistica} envíos`);
   } catch (err) {
-    logger.error(`  ❌ Logística: ${err.message}`);
+    logger.error(` Logística: ${err.message}`);
     stats.errors.push({ fase: "logistica", error: err.message });
   }
 
-  logger.info(`✅ MIGRACIÓN COMPLETA: ${JSON.stringify(stats)}`);
+  logger.info(`MIGRACIÓN COMPLETA: ${JSON.stringify(stats)}`);
   return stats;
 }
 
